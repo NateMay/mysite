@@ -1,0 +1,24 @@
+{% extends "base_bootstrap.html" %}
+
+{% block content %}
+
+<h1>Genre List</h1>
+
+{% if genre_list %}
+    <ul>
+        {% for genre in genre_list %}
+            <li>
+                {{ genre.name }}
+                (<a href="{% url 'movies:genre_update' genre.id %}">Update</a> |
+                <a href="{% url 'movies:genre_delete' genre.id %}">Delete</a>)
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>There are no genres in the library.</p>
+{% endif %}
+
+<p><a href="{% url 'movies:genre_create'%}">Add a genre</a></p>
+<p><a href="{% url 'movies:movie_list'%}">Back to movies</a></p>
+
+{% endblock %}

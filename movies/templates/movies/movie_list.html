@@ -1,0 +1,31 @@
+{% extends "base_bootstrap.html" %}
+
+{% block content %}
+
+<h1>Movie List</h1>
+{% if movie_list %}
+    <ul>
+        {% for movie in movie_list %}
+            <li>
+                {{ movie.nickname }} ({{ movie.genre }})
+                (<a href="{% url 'movies:movie_update' movie.id %}">Update</a> |
+                <a href="{% url 'movies:movie_delete' movie.id %}">Delete</a>) <br/>
+                <!--{{ movie.comments }} ({{ movie.mileage }} miles)-->
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>There are no movies in the library.</p>
+{% endif %}
+<p>
+    {% if count > 0 %}
+        <a href="{% url 'movies:movie_create'%}">Add a movie</a>
+    {% else %}
+        A genre is required before you create an associated movie.
+    {% endif %}
+</p>
+
+<p>
+    <a href="{% url 'movies:genre_list'%}">View genres</a> ({{ count }}) | <a href="{% url 'movies:genre_create'%}">Add a genre</a>
+</p>
+{% endblock %}
