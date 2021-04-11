@@ -10,22 +10,43 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.db.utils import IntegrityError
+from django.db.models import Q
+from django.contrib.humanize.templatetags.humanize import naturaltime
 
 class AdListView(OwnerListView):
     template_name = "ads/ad_list.html"
     model = Ad
 
-    def get(self, request) :
+    def get(self, request):
+
+        strval =  request.GET.get("search", False)
+
+        if strval :
+            # Simple title-only search
+            # objects = Post.objects.filter(title__contains=strval).select_related().order_by('-updated_at')[:10]
+
+            # Multi-field search
+            # __icontains for case-insensitive search
+            query = Q(title__icontains=strval) 
+            query.add(Q(text__icontains=strval), Q.OR)
+            query.add(Q(tags__name__in=[strval]), Q.OR)
+            objects = Ad.objects.filter(query).select_related().order_by('-updated_at')[:10]
+        else :
+            objects = Ad.objects.all().order_by('-updated_at')[:10]
+
+        # Augment the post_list
+        for obj in objects:
+            obj.natural_updated = naturaltime(obj.updated_at)
         # fav_list = Ad.objects.all()
         favorites = list()
         if request.user.is_authenticated:
-            print(request.user)
             rows = request.user.favorite_ads.values('id')
             favorites = [ row['id'] for row in rows]
 
         return render(request, self.template_name, {
-            'ad_list' : Ad.objects.all(),
-            'favorites': favorites
+            'ad_list' : objects,
+            'favorites': favorites,
+            "search": strval
         })
 
 class AdDetailView(OwnerDetailView):
@@ -41,6 +62,7 @@ class AdDetailView(OwnerDetailView):
 class AdCreateView(LoginRequiredMixin, View):
   template_name = 'ads/ad_form.html'
   success_url = reverse_lazy('ads:all')
+  fields = ['title', 'text', 'tags']
 
   def get(self, request, pk=None):
       form = CreateForm()
@@ -55,14 +77,16 @@ class AdCreateView(LoginRequiredMixin, View):
           return render(request, self.template_name, ctx)
 
       # Add owner to the model before saving
-      pic = form.save(commit=False)
-      pic.owner = self.request.user
-      pic.save()
+      ad = form.save(commit=False)
+      ad.owner = self.request.user
+      ad.save()
+      form.save_m2m() 
       return redirect(self.success_url)
 
 class AdUpdateView(LoginRequiredMixin, View):
     template_name = 'ads/ad_form.html'
     success_url = reverse_lazy('ads:all')
+    fields = ['title', 'text', 'tags']
 
     def get(self, request, pk):
         pic = get_object_or_404(Ad, id=pk, owner=self.request.user)
@@ -80,7 +104,7 @@ class AdUpdateView(LoginRequiredMixin, View):
 
         pic = form.save(commit=False)
         pic.save()
-
+        form.save_m2m() 
         return redirect(self.success_url)
 
 class AdDeleteView(OwnerDeleteView):
